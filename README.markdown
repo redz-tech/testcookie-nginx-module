@@ -197,6 +197,67 @@ function that is never called. For the page in the example below, the start of i
 The decoy catches scripts that take the first match; a script that runs the page in a JavaScript engine, or is adapted
 to skip the decoy, is not caught. Change where the decoy sits from time to time.
 
+testcookie_pow
+--------------
+**syntax:** *testcookie_pow &lt;bits&gt;|&lt;variable&gt;|off*
+
+**default:** *off*
+
+**context:** *http, server, location*
+
+Asks the client for work before its cookie passes (a proof of work). The cookie of *testcookie_lifetime* becomes a
+seed: the page looks for a nonce of 1 to 16 hex digits such that SHA-256 of the seed followed by the nonce starts with
+*bits* zero bits, and sets the cookie to the seed followed by the nonce. The server checks the nonce with one SHA-256,
+then the signature and the expiry as without the work. Nothing is kept on the server.
+
+    $testcookie_pow - the number of bits asked of this client, empty without testcookie_pow
+
+* *bits* is 0 to 32: every bit doubles the work. 0, or an empty value, asks for none and the seed alone passes.
+* A variable sets the work per request, for example more for some networks:
+
+        geo $pow_bits {
+            default        16;
+            203.0.113.0/24 20;
+        }
+        testcookie_pow $pow_bits;
+
+  Any other value is an error: the client gets 500 and the error log says which value. The work is checked when the
+  cookie comes back, against the work asked at that moment: when it goes up, cookies that did less are challenged again.
+* Needs *testcookie_lifetime*, and with *testcookie on* a page that does the work: *testcookie_redirect_via_refresh on*
+  and *testcookie_refresh_template*. No Set-Cookie is sent: the page sets the cookie.
+* Without *testcookie_pow* a cookie with a nonce does not pass, as before.
+* A decoy sent with a nonce is still trapped.
+* Costs one SHA-256 of at most 48 bytes per request with a cookie: on the bench, within the noise of the measurement.
+
+[doc/pow.html](doc/pow.html) is a page that does the work, for *testcookie_refresh_template_file* (#93); without it the
+page has to go into *testcookie_refresh_template* as one string. It uses *$testcookie_set*, *$testcookie_pow* and
+*$testcookie_nexturl*, and sets the cookie BPC: write your *testcookie_name* in it. It looks for the nonce in up to
+four Web Workers, with SHA-256 written in JavaScript (*crypto.subtle* is only there on https), and in the page itself,
+by slices, where workers are not allowed.
+
+What it costs a client, measured on one laptop (Apple M-series, 10 cores):
+
+* The page's SHA-256 runs at 3.5 million hashes a second in one thread of V8 at normal priority. Headless Chrome runs
+  its pages at background priority, where it was 0.9 million a worker.
+* The work is 2^bits hashes on average, but it is luck: half the clients need less than 0.7 of the average, one in
+  twenty more than 3 times it. At 14 million hashes a second (four workers at normal priority) the average is 5 ms for
+  16 bits, 19 ms for 18, 75 ms for 20, 0.3 s for 22 and 1.2 s for 24 (computed).
+* Headless Chrome on the stand, from the challenge page to the page behind it, 20 runs each: median 35 ms at 16 bits,
+  78 ms at 18, 222 ms at 20, 1.1 s at 22 (the slowest 5.3 s); 2.4 s at 24 (10 runs, the slowest 12.4 s).
+* Phones were not measured; their cores are slower.
+
+What it stops and what it does not:
+
+* It is a price per pass, not per request: a cookie that did the work passes for its session until it expires.
+* A script that does the work itself passes. It pays CPU time for every session: natively the hash is only a few times
+  faster than the page (OpenSSL: 10.8 million a second on one core of the same laptop; a Python script: 2.4 million,
+  135 ms of one core a pass at 18 bits), and a GPU is much faster still. It makes many new sessions expensive, such as a
+  botnet or rotating addresses
+  where *testcookie_session* has the address; a few sessions that send many requests pay once per lifetime, so use
+  *limit_req* for those.
+* The more work, the longer a real visitor waits on a slow device: start low (16-18 bits) and raise it with a variable
+  where it is needed.
+
 testcookie_session
 ------------------
 **syntax:** *testcookie_session &lt;variable&gt;*

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex">
+<title>Checking your browser</title>
+</head>
+<body>
+<p>Checking your browser&hellip;</p>
+<noscript><p>Please turn on JavaScript and cookies, then reload the page.</p></noscript>
+<script>
+(function () {
+    var seed = "$testcookie_set",
+        bits = parseInt("$testcookie_pow", 10) || 0,
+        next = "$testcookie_nexturl";
+
+    /*
+     * Looks for n from start on, so that SHA-256 of seed | hi | the 8 hex digits
+     * of n starts with "bits" zero bits; returns n, or -1. The message is 48
+     * bytes, one SHA-256 block: the 32 hex digits of the seed (words 0-7) and a
+     * nonce of 16 hex digits (words 8-11). The rounds over the seed are done once.
+     */
+    function search(seed, hi, bits, start, count) {
+        var K = [
+            0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+            0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+            0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+            0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+            0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+            0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+            0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+            0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+        ];
+        var HEX = [], W = [], a, b, c, d, e, f, g, h, t, x, y, t1, t2, n, end, i, s;
+        var a8, b8, c8, d8, e8, f8, g8, h8, shift = 32 - bits;
+
+        for (i = 0; i < 256; i++) {
+            s = (i < 16 ? "0" : "") + i.toString(16);
+            HEX[i] = (s.charCodeAt(0) << 8) | s.charCodeAt(1);
+        }
+
+        a = 0x6a09e667; b = 0xbb67ae85; c = 0x3c6ef372; d = 0xa54ff53a;
+        e = 0x510e527f; f = 0x9b05688c; g = 0x1f83d9ab; h = 0x5be0cd19;
+
+        for (t = 0; t < 8; t++) {
+            W[t] = seed[t];
+            t1 = (h + ((e >>> 6 | e << 26) ^ (e >>> 11 | e << 21) ^ (e >>> 25 | e << 7))
+                  + ((e & f) ^ (~e & g)) + K[t] + W[t]) | 0;
+            t2 = (((a >>> 2 | a << 30) ^ (a >>> 13 | a << 19) ^ (a >>> 22 | a << 10))
+                  + ((a & b) ^ (a & c) ^ (b & c))) | 0;
+            h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+        }
+
+        a8 = a; b8 = b; c8 = c; d8 = d; e8 = e; f8 = f; g8 = g; h8 = h;
+
+        W[8] = hi[0]; W[9] = hi[1];
+        W[12] = 0x80000000 | 0; W[13] = 0; W[14] = 0; W[15] = 48 * 8;
+
+        for (n = start, end = start + count; n < end; n++) {
+            W[10] = (HEX[(n >>> 24) & 255] << 16) | HEX[(n >>> 16) & 255];
+            W[11] = (HEX[(n >>> 8) & 255] << 16) | HEX[n & 255];
+
+            for (t = 16; t < 64; t++) {
+                x = W[t - 15]; y = W[t - 2];
+                W[t] = (W[t - 16] + ((x >>> 7 | x << 25) ^ (x >>> 18 | x << 14) ^ (x >>> 3))
+                        + W[t - 7] + ((y >>> 17 | y << 15) ^ (y >>> 19 | y << 13) ^ (y >>> 10))) | 0;
+            }
+
+            a = a8; b = b8; c = c8; d = d8; e = e8; f = f8; g = g8; h = h8;
+
+            for (t = 8; t < 64; t++) {
+                t1 = (h + ((e >>> 6 | e << 26) ^ (e >>> 11 | e << 21) ^ (e >>> 25 | e << 7))
+                      + ((e & f) ^ (~e & g)) + K[t] + W[t]) | 0;
+                t2 = (((a >>> 2 | a << 30) ^ (a >>> 13 | a << 19) ^ (a >>> 22 | a << 10))
+                      + ((a & b) ^ (a & c) ^ (b & c))) | 0;
+                h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+            }
+
+            if (((a + 0x6a09e667) >>> shift) === 0) {
+                return n;
+            }
+        }
+
+        return -1;
+    }
+
+    function words(text) {
+        var w = [];
+        for (var i = 0; i < text.length; i += 4) {
+            w.push((text.charCodeAt(i) << 24) | (text.charCodeAt(i + 1) << 16)
+                   | (text.charCodeAt(i + 2) << 8) | text.charCodeAt(i + 3));
+        }
+        return w;
+    }
+
+    function hex8(n) {
+        var s = n.toString(16);
+        return "00000000".substr(s.length) + s;
+    }
+
+    function done(nonce) {
+        document.cookie = "BPC=" + seed + nonce + "; path=/";
+        location.replace(next);
+    }
+
+    if (bits === 0) {
+        done("");
+        return;
+    }
+
+    var seedWords = words(seed), workers = [], found = false, inPage = false, i, w, url;
+
+    function stop() {
+        for (var j = 0; j < workers.length; j++) {
+            workers[j].terminate();
+        }
+        workers = [];
+    }
+
+    function finish(hi, n) {
+        if (found || n < 0) {
+            return;
+        }
+        found = true;
+        stop();
+        done(hex8(hi) + hex8(n));
+    }
+
+    /* without workers the page searches by slices, so that it stays responsive */
+    function searchInPage() {
+        var start = 0;
+
+        if (found || inPage) {
+            return;
+        }
+        inPage = true;
+        stop();
+
+        (function slice() {
+            var n = search(seedWords, words(hex8(0)), bits, start, 50000);
+            if (n >= 0) {
+                finish(0, n);
+                return;
+            }
+            start += 50000;
+            setTimeout(slice, 0);
+        })();
+    }
+
+    /* each worker searches its own nonces: its number is the first 8 hex digits */
+    try {
+        url = URL.createObjectURL(new Blob([
+            "var search = " + search.toString() + ";\n"
+            + "onmessage = function (m) {\n"
+            + "    postMessage(search(m.data.seed, m.data.hi, m.data.bits, 0, 4294967296));\n"
+            + "};\n"
+        ], { type: "text/javascript" }));
+
+        for (i = 0; i < Math.min(navigator.hardwareConcurrency || 2, 4); i++) {
+            w = new Worker(url);
+            w.onmessage = (function (hi) {
+                return function (m) { finish(hi, m.data); };
+            })(i);
+            w.onerror = searchInPage;
+            workers.push(w);
+            w.postMessage({ seed: seedWords, hi: words(hex8(i)), bits: bits });
+        }
+    } catch (err) {
+        searchInPage();
+    }
+})();
+</script>
+</body>
+</html>
