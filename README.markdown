@@ -1,3 +1,54 @@
+This fork
+=========
+
+This is [kyprizel/testcookie-nginx-module](https://github.com/kyprizel/testcookie-nginx-module) with every change we
+sent there, merged so that it can be used now. Each change is a pull request of its own upstream, with tests.
+Everything new is off until its directive is set: without the new directives the module answers as before, with the
+same cookie.
+
+Fixes:
+
+* [#87](https://github.com/kyprizel/testcookie-nginx-module/pull/87): two heap buffer overflows, with
+  *testcookie_expires* past 2037 and with *testcookie_secret random*
+  ([#86](https://github.com/kyprizel/testcookie-nginx-module/issues/86)).
+* [#89](https://github.com/kyprizel/testcookie-nginx-module/pull/89): the request body is discarded before the
+  challenge page. On keep-alive the body of a challenged POST was read as the next request, and logins and passwords
+  went into access.log.
+* [#90](https://github.com/kyprizel/testcookie-nginx-module/pull/90): no read past the query string when looking for
+  the attempt counter.
+* [#95](https://github.com/kyprizel/testcookie-nginx-module/pull/95): no worker crash on *$testcookie_set* for a
+  whitelisted client.
+
+New:
+
+* [#93](https://github.com/kyprizel/testcookie-nginx-module/pull/93): *testcookie_refresh_template_file*, the challenge
+  page from a file.
+* [#94](https://github.com/kyprizel/testcookie-nginx-module/pull/94): *testcookie_lifetime*, a signed cookie that
+  carries its own expiry, so that one solved challenge does not pass forever; *testcookie_previous_secret*, to change
+  the secret without challenging everyone again.
+* [#96](https://github.com/kyprizel/testcookie-nginx-module/pull/96): a decoy for scripts that read the page by
+  pattern: *$testcookie_decoy*, *$testcookie_enc_decoy*, *$testcookie_trapped*.
+* *testcookie_pow*: a proof of work on the signed cookie, with a page that does it, [doc/pow.html](doc/pow.html). It
+  is only here for now: proposed upstream in [#97](https://github.com/kyprizel/testcookie-nginx-module/issues/97).
+
+Tests and documentation:
+
+* [#88](https://github.com/kyprizel/testcookie-nginx-module/pull/88): the tests run again, with new tests of the
+  cookie; CI builds the module with nginx 1.22 to 1.31 under -Werror and runs the tests, also under AddressSanitizer.
+* [#91](https://github.com/kyprizel/testcookie-nginx-module/pull/91): this README says what the module stops and what
+  it does not, the common pitfalls and the real defaults.
+
+Not fixed yet: [#92](https://github.com/kyprizel/testcookie-nginx-module/issues/92), Location after an internal
+redirect.
+
+[redz/testcookie/](redz/testcookie/) is an example that uses all of it: *init.conf*, included at server level, and
+*pow.html*, the page that does the work and carries a decoy. On the bench at 18 bits Chrome (HTTP/1.1, 2 and 3),
+Firefox and WebKit pass it with a median under 0.1 s; a script that reads the page by pattern takes the decoy and
+gets 444, and a script adapted to skip it pays the work for every session. *aes.min.js* there is SlowAES with
+utils/aes.patch, for the AES page [doc/refresh_template.html](doc/refresh_template.html) without the work.
+
+Build from master. The tag v1.0.0 is upstream with the fix of #87 only.
+
 Description
 ===========
 
