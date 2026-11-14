@@ -220,6 +220,8 @@ What it costs a client, measured on one laptop (Apple M-series, 10 cores):
   16 bits, 19 ms for 18, 75 ms for 20, 0.3 s for 22 and 1.2 s for 24 (computed).
 * Headless Chrome on the stand, from the challenge page to the page behind it, 20 runs each: median 35 ms at 16 bits,
   78 ms at 18, 222 ms at 20, 1.1 s at 22 (the slowest 5.3 s); 2.4 s at 24 (10 runs, the slowest 12.4 s).
+* Firefox 160 (headless) and WebKit (the WKWebView of macOS) pass too, at 18 bits, 10 runs each: Firefox median
+  42 ms over HTTP/1.1 and 65 ms over HTTP/2, WebKit 26 ms over HTTP/2.
 * Phones were not measured; their cores are slower.
 
 What it stops and what it does not:
@@ -228,9 +230,8 @@ What it stops and what it does not:
 * A script that does the work itself passes. It pays CPU time for every session: natively the hash is only a few times
   faster than the page (OpenSSL: 10.8 million a second on one core of the same laptop; a Python script: 2.4 million,
   135 ms of one core a pass at 18 bits), and a GPU is much faster still. It makes many new sessions expensive, such as a
-  botnet or rotating addresses
-  where *testcookie_session* has the address; a few sessions that send many requests pay once per lifetime, so use
-  *limit_req* for those.
+  botnet or rotating addresses where *testcookie_session* has the address; a few sessions that send many requests pay
+  once per lifetime, so use *limit_req* for those.
 * The more work, the longer a real visitor waits on a slow device: start low (16-18 bits) and raise it with a variable
   where it is needed.
 
